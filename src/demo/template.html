@@ -29,7 +29,7 @@
     </div>
   </div>
   <div class="col-md-4">
-    <h3>{{ viewDate | calendarDate:(view + 'ViewTitle'):'pl' }}</h3>
+    <h3>{{ viewDate | calendarDate:(view + 'ViewTitle'):'en' }}</h3>
   </div>
   <div class="col-md-4">
     <div class="btn-group">
@@ -57,6 +57,13 @@
     </div>
   </div>
 </div>
+<br/>
+<div class="alert alert-info">
+  Click on a day or time slot on the view.
+  <strong *ngIf="clickedDate"
+  >You clicked on this time: {{ clickedDate | date:'medium' }}</strong
+  >
+</div>
 <br />
 <div [ngSwitch]="view">
   <mwl-calendar-month-view
@@ -64,10 +71,15 @@
     [viewDate]="viewDate"
     [events]="events"
     [refresh]="refresh"
+    (beforeViewRender)="beforeMonthViewRender($event)"
     [activeDayIsOpen]="activeDayIsOpen"
     (dayClicked)="dayClicked($event.day)"
+    (dayClicked)="clickedDate = $event.day.date"
     (eventClicked)="handleEvent('Clicked', $event.event)"
     (eventTimesChanged)="eventTimesChanged($event)"
+
+
+
   >
   </mwl-calendar-month-view>
   <mwl-calendar-week-view
@@ -77,8 +89,10 @@
     [dayStartHour]="6"
     [dayEndHour]="20"
     [refresh]="refresh"
+    (beforeViewRender)="beforeWeekViewRender($event)"
     (eventClicked)="handleEvent('Clicked', $event.event)"
     (eventTimesChanged)="eventTimesChanged($event)"
+    (hourSegmentClicked)="clickedDate = $event.date"
   >
   </mwl-calendar-week-view>
   <mwl-calendar-day-view
@@ -88,8 +102,11 @@
     [dayStartHour]="6"
     [dayEndHour]="20"
     [refresh]="refresh"
+    (beforeViewRender)="beforeDayViewRender($event)"
     (eventClicked)="handleEvent('Clicked', $event.event)"
     (eventTimesChanged)="eventTimesChanged($event)"
+    (hourSegmentClicked)="clickedDate = $event.date"
+
   >
   </mwl-calendar-day-view>
 </div>

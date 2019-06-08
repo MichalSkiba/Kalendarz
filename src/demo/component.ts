@@ -1,41 +1,28 @@
-import {
-  Component,
-  ChangeDetectionStrategy,
-  ViewChild,
-  TemplateRef
-} from '@angular/core';
-import {
-  startOfDay,
-  endOfDay,
-  subDays,
-  addDays,
-  endOfMonth,
-  isSameDay,
-  isSameMonth,
-  addHours, startOfHour, endOfHour, setHours
-} from 'date-fns';
-import { Subject } from 'rxjs';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import {ChangeDetectionStrategy, Component, TemplateRef, ViewChild, ViewEncapsulation} from '@angular/core';
+import {addDays, addHours, endOfMonth, isSameDay, isSameMonth, setHours, setMinutes, startOfDay, subDays} from 'date-fns';
+import {Subject} from 'rxjs';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {
   CalendarDateFormatter,
+  CalendarDayViewBeforeRenderEvent,
   CalendarEvent,
   CalendarEventAction,
-  CalendarEventTimesChangedEvent,
-  CalendarView
+  CalendarEventTimesChangedEvent, CalendarMonthViewBeforeRenderEvent,
+  CalendarView, CalendarWeekViewBeforeRenderEvent
 } from 'angular-calendar';
 import {CustomDateFormatter} from './custom-date-formatter.provider';
 
 const colors: any = {
   red: {
-    primary: '#ad2121',
-    secondary: '#FAE3E3'
+    primary: '#af2323',
+    secondary: '#fae6e6'
   },
   blue: {
-    primary: '#1e90ff',
-    secondary: '#D1E8FF'
+    primary: '#1e91ff',
+    secondary: '#d2e6ff'
   },
   yellow: {
-    primary: '#e3bc08',
+    primary: '#e6be0a',
     secondary: '#FDF1BA'
   }
 };
@@ -43,6 +30,7 @@ const colors: any = {
 @Component({
   selector: 'mwl-demo-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
   styleUrls: ['styles.css'],
   templateUrl: 'template.html',
   providers: [
@@ -56,9 +44,7 @@ export class DemoComponent {
   @ViewChild('modalContent') modalContent: TemplateRef<any>;
 
   view: CalendarView = CalendarView.Month;
-
   CalendarView = CalendarView;
-
   viewDate: Date = new Date();
 
   modalData: {
@@ -86,34 +72,35 @@ export class DemoComponent {
 
   events: CalendarEvent[] = [
 
-    {
-      start: startOfDay(new Date()),
-      title: 'An event with no end date',
-      color: colors.yellow,
-      actions: this.actions
-    },
-    {
-      start: subDays(endOfMonth(new Date()), 3),
-      end: addDays(endOfMonth(new Date()), 3),
-      title: 'A long event that spans 2 months',
-      color: colors.blue,
-      allDay: true
-    },
-    {
-      start: addHours(startOfDay(new Date()), 2),
-      end: new Date(),
-      title: 'A draggable and resizable event',
-      color: colors.yellow,
-      actions: this.actions,
-      resizable: {
-        beforeStart: true,
-        afterEnd: true
-      },
-      draggable: true
-    }
+    // {
+    //   start: startOfDay(new Date()),
+    //   title: 'An event with no end date',
+    //   color: colors.yellow,
+    //   actions: this.actions
+    // },
+    // {
+    //   start: subDays(endOfMonth(new Date()), 3),
+    //   end: addDays(endOfMonth(new Date()), 3),
+    //   title: 'A long event that spans 2 months',
+    //   color: colors.blue,
+    //   allDay: true
+    // },
+    // {
+    //   start: addHours(startOfDay(new Date()), 2),
+    //   end: new Date(),
+    //   title: 'A draggable and resizable event',
+    //   color: colors.yellow,
+    //   actions: this.actions,
+    //   resizable: {
+    //     beforeStart: true,
+    //     afterEnd: true
+    //   },
+    //   draggable: true
+    // }
   ];
 
   activeDayIsOpen = true;
+  clickedDate: Date;
 
   constructor(private modal: NgbModal) {}
 
@@ -127,6 +114,7 @@ export class DemoComponent {
         this.activeDayIsOpen = false;
       } else {
         this.activeDayIsOpen = true;
+
       }
     }
   }
@@ -158,11 +146,12 @@ export class DemoComponent {
     this.events = [
       ...this.events,
       {
-        title: 'New event',
-        start: startOfDay(new Date()),
-        end: endOfDay(new Date()),
+        title: 'Slub',
+        start: addHours(startOfDay(new Date()), 7),
+        end: setHours(setMinutes(new Date(), 0), 15),
         color: colors.red,
         draggable: true,
+        actions: this.actions,
         resizable: {
           beforeStart: true,
           afterEnd: true
@@ -181,5 +170,40 @@ export class DemoComponent {
 
   closeOpenMonthViewDay() {
     this.activeDayIsOpen = false;
+  }
+
+  beforeMonthViewRender(renderEvent: CalendarMonthViewBeforeRenderEvent): void {
+    renderEvent.body.forEach(day => {
+      const dayOfMonth = day.date.getDate();
+      if (dayOfMonth >= 1 && dayOfMonth < 4 && day.inMonth) {
+        day.cssClass = 'bg-red';
+      }
+    });
+  }
+
+  beforeWeekViewRender(renderEvent: CalendarWeekViewBeforeRenderEvent) {
+    renderEvent.hourColumns.forEach(hourColumn => {
+      hourColumn.hours.forEach(hour => {
+        hour.segments.forEach(segment => {
+          if (
+            segment.date.getHours() >= 10 &&
+            segment.date.getHours() <= 12 &&
+            segment.date.getDay() === 2
+          ) {
+            segment.cssClass = 'bg-red';
+          }
+        });
+      });
+    });
+  }
+
+  beforeDayViewRender(renderEvent: CalendarDayViewBeforeRenderEvent) {
+    renderEvent.body.hourGrid.forEach(hour => {
+      hour.segments.forEach((segment, index) => {
+        if (segment.date.getHours() >= 10 && segment.date.getHours() <= 12) {
+          segment.cssClass = 'bg-red';
+        }
+      });
+    });
   }
 }
