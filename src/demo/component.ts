@@ -1,16 +1,28 @@
-import {ChangeDetectionStrategy, Component, TemplateRef, ViewChild, ViewEncapsulation} from '@angular/core';
-import {addDays, addHours, endOfMonth, isSameDay, isSameMonth, setHours, setMinutes, startOfDay, subDays} from 'date-fns';
-import {Subject} from 'rxjs';
+import {ChangeDetectionStrategy, Component, TemplateRef, ViewChild, ViewEncapsulation, ChangeDetectorRef} from '@angular/core';
+import {addHours, isSameDay, isSameMonth, setHours, setMinutes, startOfDay, addDays, addMinutes, endOfWeek} from 'date-fns';
+import {Subject,  fromEvent} from 'rxjs';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
+import {CustomDateFormatter} from './custom-date-formatter.provider';
+import { DayViewHourSegment } from 'calendar-utils';
+import { finalize, takeUntil } from 'rxjs/operators';
 import {
   CalendarDateFormatter,
   CalendarDayViewBeforeRenderEvent,
   CalendarEvent,
   CalendarEventAction,
-  CalendarEventTimesChangedEvent, CalendarMonthViewBeforeRenderEvent,
-  CalendarView, CalendarWeekViewBeforeRenderEvent
+  CalendarEventTimesChangedEvent, CalendarEventTitleFormatter,
+  CalendarMonthViewBeforeRenderEvent,
+  CalendarView,
+  CalendarWeekViewBeforeRenderEvent
 } from 'angular-calendar';
-import {CustomDateFormatter} from './custom-date-formatter.provider';
+
+function floorToNearest(amount: number, precision: number) {
+  return Math.floor(amount / precision) * precision;
+}
+
+function ceilToNearest(amount: number, precision: number) {
+  return Math.ceil(amount / precision) * precision;
+}
 
 const colors: any = {
   red: {
@@ -27,7 +39,22 @@ const colors: any = {
   }
 };
 
+export class CustomEventTitleFormatter extends CalendarEventTitleFormatter {
+  weekTooltip(event: CalendarEvent, title: string) {
+    if (!event.meta.tmpEvent) {
+      return super.weekTooltip(event, title);
+    }
+  }
+
+  dayTooltip(event: CalendarEvent, title: string) {
+    if (!event.meta.tmpEvent) {
+      return super.dayTooltip(event, title);
+    }
+  }
+}
+
 @Component({
+  // tslint:disable-next-line:component-selector
   selector: 'mwl-demo-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
@@ -36,7 +63,7 @@ const colors: any = {
   providers: [
     {
       provide: CalendarDateFormatter,
-      useClass: CustomDateFormatter
+      useClass: CustomDateFormatter,
     }
   ]
 })
@@ -99,10 +126,36 @@ export class DemoComponent {
     // }
   ];
 
+  externalEvents: CalendarEvent[] = [
+    {
+      title: 'Event 1',
+      color: colors.yellow,
+      start: new Date(),
+      draggable: true,
+      actions: this.actions,
+      resizable: {
+        beforeStart: true,
+        afterEnd: true
+      }
+    },
+    {
+      title: 'Event 2',
+      color: colors.blue,
+      start: new Date(),
+      draggable: true,
+      actions: this.actions,
+      resizable: {
+        beforeStart: true,
+        afterEnd: true
+      }
+    }
+  ];
+
   activeDayIsOpen = true;
   clickedDate: Date;
+  private dragToCreateActive: boolean;
 
-  constructor(private modal: NgbModal) {}
+  constructor(private modal: NgbModal, private cdr: ChangeDetectorRef) {}
 
   dayClicked({ date, events }: { date: Date; events: CalendarEvent[] }): void {
     if (isSameMonth(date, this.viewDate)) {
@@ -205,5 +258,89 @@ export class DemoComponent {
         }
       });
     });
+  }
+
+  eventDropped({
+                 event,
+                 newStart,
+                 newEnd,
+                 allDay
+               }: CalendarEventTimesChangedEvent): void {
+    const externalIndex = this.externalEvents.indexOf(event);
+    if (typeof allDay !== 'undefined') {
+      event.allDay = allDay;
+    }
+    if (externalIndex > -1) {
+      this.externalEvents.splice(externalIndex, 1);
+      this.events.push(event);
+    }
+    event.start = newStart;
+    if (newEnd) {
+      event.end = newEnd;
+    }
+    if (this.view === 'month') {
+      this.viewDate = newStart;
+      this.activeDayIsOpen = true;
+    }
+    this.events = [...this.events];
+  }
+
+  externalDrop(event: CalendarEvent) {
+    if (this.externalEvents.indexOf(event) === -1) {
+      this.events = this.events.filter(iEvent => iEvent !== event);
+      this.externalEvents.push(event);
+    }
+  }
+
+  startDragToCreate(
+    segment: DayViewHourSegment,
+    mouseDownEvent: MouseEvent,
+    segmentElement: HTMLElement
+  ) {
+    const dragToSelectEvent: CalendarEvent = {
+      id: this.events.length,
+      title: 'New event',
+      start: segment.date,
+      meta: {
+        tmpEvent: true
+      }
+    };
+    this.events = [...this.events, dragToSelectEvent];
+    const segmentPosition = segmentElement.getBoundingClientRect();
+    this.dragToCreateActive = true;
+    const endOfView = endOfWeek(this.viewDate);
+
+    fromEvent(document, 'mousemove')
+      .pipe(
+        finalize(() => {
+          delete dragToSelectEvent.meta.tmpEvent;
+          this.dragToCreateActive = false;
+          this.refreshEV();
+        }),
+        takeUntil(fromEvent(document, 'mouseup'))
+      )
+      .subscribe((mouseMoveEvent: MouseEvent) => {
+        const minutesDiff = ceilToNearest(
+          mouseMoveEvent.clientY - segmentPosition.top,
+          30
+        );
+
+        const daysDiff =
+          floorToNearest(
+            mouseMoveEvent.clientX - segmentPosition.left,
+            segmentPosition.width
+          ) / segmentPosition.width;
+
+        const newEnd = addDays(addMinutes(segment.date, minutesDiff), daysDiff);
+        if (newEnd > segment.date && newEnd < endOfView) {
+          dragToSelectEvent.end = newEnd;
+        }
+        this.refreshEV();
+      });
+  }
+
+  private refreshEV() {
+    this.events = [...this.events];
+    this.cdr.detectChanges();
   }
 }

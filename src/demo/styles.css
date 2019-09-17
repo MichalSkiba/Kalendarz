@@ -11,3 +11,7 @@ pre {
   background-color: #ff4632 !important;
 }
 
+.disable-hover {
+  pointer-events: none;
+}
+
