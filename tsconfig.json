@@ -1,21 +1,5 @@
 {
-  "compileOnSave": false,
-  "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "./dist/out-tsc",
-    "sourceMap": true,
-    "declaration": false,
-    "module": "es2015",
-    "moduleResolution": "node",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "target": "es5",
-    "typeRoots": [
-      "node_modules/@types"
-    ],
-    "lib": [
-      "es2018",
-      "dom"
-    ]
-  }
-  }
+ "compileOnSave":false,
+ "compilerOptions":{"target":"ES2022","module":"ES2022","moduleResolution":"bundler","lib":["ES2022","DOM"],"strict":true,"skipLibCheck":true,"experimentalDecorators":true,"useDefineForClassFields":false,"types":[]},
+ "angularCompilerOptions":{"strictInjectionParameters":true,"strictTemplates":true}
+}

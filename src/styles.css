@@ -1,10 +1,1 @@
-/* You can add global styles to this file, and also import other style files */
-h3 {
-  margin: 0 0 10px;
-}
-
-pre {
-  background-color: #ffffff;
-  padding: 15px;
-}
-
+body{margin:0;color:#222;background:#fff}*{box-sizing:border-box}
